@@ -1,0 +1,108 @@
+---
+title: "Report"
+author: "Stephen Zielke"
+date: "November 28, 2015"
+output: html_document
+---
+
+##Abstract
+
+##Introduction
+Mixed martial arts, along with most if not all combat sports, relies on a weight class system to ensure fights are fair by occuring only between fighters of similar weight. This weight requirment creates the need to weigh fighters before competition. In preparation many fighters pay stricked attention to their weight. Mixed martial arts fighters typiaclly weigh in the day before their fights. This timing of the weigh in allows fighters to loose significant amounts of water weight before being weighed and gaining the weight back before fighting.
+
+The weight loss process often involves short term fasting from both food and water coupled with various activities to induce massive amounts of sweating (e.g. saunas, hot baths, and exersize while wearing sweat and rain suits to retain heat). Weight cutting allows a fighter to be larger than the weight class implys confering an advantage through the extra size and strength they are carrying. Too much weight cutting however, can reduce a fighters energy and stamina, and reduce their effectivness in the fight.
+
+There may also be additional longterm health effects with weight cutting. Commentator Joe Rogan has made comments on his excellent podcast, The Joe Rogan Experience, that he wished there was a way to avoid weight cutting in mixed martial arts. Suggestions have included conducting the weigh in immediatly before the fight, thus preventing most weight cutting by making fighters avoid fighting fatigued.
+
+I propose another method of determining classes, not based on weight, but on a fighter's size measured by less variable metrics. Fighters heights and reach are already measured and in this paper I propose a new 'size class' system based on a these two metrics. A person's height and reach remain relativly constant over ones life, or at least fighting carreer, and thus would only be measured once.
+
+##Data Collection
+Fighter weight, height and reach were scraped from ufc.com using the rvest package. The code below accomplishes he
+
+```{r collection, eval=FALSE}
+library(rvest)
+
+#global variables
+classes <- c("Flyweight","Bantamweight","Featherweight","Lightweight","Welterweight","Middleweight",
+               "Light_Heavyweight","Heavyweight","Women_Strawweight","Women_Bantamweight")
+fighters <- NULL
+data <- NULL
+
+#collects urls of fighter links
+list_urls <- function(){
+  root <- c("http://www.ufc.ca/fighter/Weight_Class/")
+  pages <- NULL
+  for (i in 1:length(classes)){
+    u <- paste(root,classes[i],sep="")
+    page <- read_html(u)
+    links <- html_nodes(page,".step")
+    for (j in 1:length(links)){
+      temp <- as.character(links[j])
+      temp <- sub(".*?/(.*?)asc.*", "\\1", temp)
+      temp <- gsub("amp;","",temp)
+      temp <- paste(root,temp,"asc",sep="")
+      u <- c(u,temp)
+    }#for j
+    u <- data.frame(Class = classes[i],Links = u)
+    pages <- rbind(pages,u)
+  }#for i
+  pages
+}#list_urls
+
+#collects urls of individual fighters
+fighter_urls <- function(pages){
+  fu <- NULL
+  for (i in 1:nrow(pages)){
+    p <- read_html(as.character(pages$Links[i]))
+    links <- html_nodes(p,".fighter-name")
+    for (j in 1:length(links)){
+      temp <- as.character(links[j])
+      temp <- sub(".*?/(.*?)\".*", "\\1", temp)
+      temp <- data.frame(Link=temp,Class=pages$Class[i])
+      fu <- rbind(fu,temp)
+    }#for j
+  }#for i
+  fu
+}#fighter_urls
+
+#does error checking for values
+check_value <- function(fighter,class,w,h,r){
+  if (length(w)==0) {w <- NA}
+  if (length(h)==0) {h <- NA}
+  if (length(r)==0) {r <- NA}
+  data.frame(fighter=fighter,Class=class,Weight.kg=w,Height.cm=h,Reach.cm=r)
+}#check_value
+
+#collects info on fighters
+get_data <- function(){
+  pages <- list_urls()
+  fighters <<- fighter_urls(pages)
+  w <- NULL; h <- NULL; r <- NULL; dat <- NULL
+  root <- "http://www.ufc.ca/fighter/"
+  for (i in 1:nrow(fighters)){
+    u <- paste(root,as.character(fighters$Link[i]),sep="")
+    p <- read_html(u)
+    w <- html_nodes(p,"#fighter-weight")
+    w <- as.numeric(sub(".*?[(](.*?)k.*", "\\1", w))
+    h <- html_nodes(p,"#fighter-height")
+    h <- as.numeric(sub(".*?[(](.*?)c.*", "\\1", h))
+    r <- html_nodes(p,"#fighter-reach")
+    r <- 2.54*as.numeric(sub(".*?[>](.*?)\".*", "\\1", r))
+    temp <- check_value(fighters$Link[i],fighters$Class[i],w,h,r)
+    dat <- rbind(dat,temp)
+  }#for i
+  data <<- na.omit(dat)
+  write.csv(data,file="data.csv",row.names=FALSE,quote=FALSE)
+}#get_data
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+##Conclusion
+I would like to mention the class system proposed here is only meant as an example of an alternative to the traditional weight classes. Given sufficient time and resources a fuller and more accurate method for determining a fighters size class could be determined, however a class system based on body features which are as static as height and reach would solve the problem requiring weigh-ins before fights allowing for better health and stamina of fighters, resulting in more entertaining fights (which is what we all want).
+
+It is also important to note that weight is not the be all end all of determing a fighting class. Jon Jones for instance, in addition his skill, has a huge advantage against his opponents due to his lanky body and a class system reflecting body shape. Also, other sports (hockey, football, rugby...) have a variety of sized players competing directly with each other with little to no compensation for size or speed differences and makes me wonder just how nessesary size classes are.
