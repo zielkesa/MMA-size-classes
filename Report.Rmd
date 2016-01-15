@@ -1,32 +1,39 @@
 ---
-title: "Report"
+title: "An Alternative to Weight Classes in MMA"
 author: "Stephen Zielke"
-date: "November 28, 2015"
+date: "January 15 2016"
 output: html_document
 ---
 
 ##Abstract
+MMA fighter's are classified based on their weight. Fighters weigh in the day before competition allowing them to cut water weight and fight at smaller weight classes than they weigh during competition. Cutting weight is beleived to have serious long term health implications. I propose an alternative to weight classes based on a fighter's height and reach creating new 'size classes'.
 
 ##Introduction
-Mixed martial arts, along with most if not all combat sports, relies on a weight class system to ensure fights are fair by occuring only between fighters of similar weight. This weight requirment creates the need to weigh fighters before competition. In preparation many fighters pay stricked attention to their weight. Mixed martial arts fighters typiaclly weigh in the day before their fights. This timing of the weigh in allows fighters to loose significant amounts of water weight before being weighed and gaining the weight back before fighting.
+Mixed martial arts, along with most if not all combat sports, relies on a weight class system to ensure fights are fair by occuring only between fighters of similar weight. This weight requirment creates the need to weigh fighters before competition. In preparation many fighters pay strict attention to their weight. Mixed martial arts fighters typiaclly weigh in the day before their fights. This timing of the weigh in allows fighters to loose significant amounts of water weight before being weighed and gain the weight back before fighting.
 
 The weight loss process often involves short term fasting from both food and water coupled with various activities to induce massive amounts of sweating (e.g. saunas, hot baths, and exersize while wearing sweat and rain suits to retain heat). Weight cutting allows a fighter to be larger than the weight class implys confering an advantage through the extra size and strength they are carrying. Too much weight cutting however, can reduce a fighters energy and stamina, and reduce their effectivness in the fight.
 
 There may also be additional longterm health effects with weight cutting. Commentator Joe Rogan has made comments on his excellent podcast, The Joe Rogan Experience, that he wished there was a way to avoid weight cutting in mixed martial arts. Suggestions have included conducting the weigh in immediatly before the fight, thus preventing most weight cutting by making fighters avoid fighting fatigued.
 
-I propose another method of determining classes, not based on weight, but on a fighter's size measured by less variable metrics. Fighters heights and reach are already measured and in this paper I propose a new 'size class' system based on a these two metrics. A person's height and reach remain relativly constant over ones life, or at least fighting carreer, and thus would only be measured once.
+I propose another method of determining classes, not based on weight, but on a fighter's size measured by less variable metrics. Fighter's heights and reach are already measured and in this paper I propose a new 'size class' system based on a these two metrics. A person's height and reach remain relativly constant over ones life, or at least fighting carreer, and thus would only need to be measured once in a fighter's career.
 
 ##Data Collection
-Fighter weight, height and reach were scraped from ufc.com using the rvest package. The code below accomplishes he
+Fighter weight, height and reach were scraped from ufc.com using the rvest package. The code below accomplishes the data collection:
+```{r, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(pander)
+library(rvest)
+library(scatterplot3d)
+```
 
 ```{r collection, eval=FALSE}
-library(rvest)
-
 #global variables
 classes <- c("Flyweight","Bantamweight","Featherweight","Lightweight","Welterweight","Middleweight",
                "Light_Heavyweight","Heavyweight","Women_Strawweight","Women_Bantamweight")
 fighters <- NULL
-data <- NULL
+fighter.data <- NULL
 
 #collects urls of fighter links
 list_urls <- function(){
@@ -65,7 +72,14 @@ fighter_urls <- function(pages){
   fu
 }#fighter_urls
 
-#does error checking for values
+#does error checking for collected values
+#requires:
+#   fighter - name of fighter
+#   class - weight class
+#   w - weight
+#   h - height
+#   r - reach
+#returns: data frame
 check_value <- function(fighter,class,w,h,r){
   if (length(w)==0) {w <- NA}
   if (length(h)==0) {h <- NA}
@@ -74,6 +88,8 @@ check_value <- function(fighter,class,w,h,r){
 }#check_value
 
 #collects info on fighters
+#requires: nothing
+#returns: nothing
 get_data <- function(){
   pages <- list_urls()
   fighters <<- fighter_urls(pages)
@@ -91,18 +107,65 @@ get_data <- function(){
     temp <- check_value(fighters$Link[i],fighters$Class[i],w,h,r)
     dat <- rbind(dat,temp)
   }#for i
-  data <<- na.omit(dat)
-  write.csv(data,file="data.csv",row.names=FALSE,quote=FALSE)
+  fighter.data <<- na.omit(dat)
+  write.csv(fighter.data,file="data.csv",row.names=FALSE,quote=FALSE)
 }#get_data
 ```
 
-You can also embed plots, for example:
+##Creating New Classes
 
-```{r, echo=FALSE}
-plot(cars)
+The proposed size classes should be based on static features of a fighters body, and thus I will attempt to create a classification based on a linear combination of a fighter's height and reach. The plots below show the relationship between a fighters height, reach, and weight. Colours signify different weight classes.
+
+```{r explore, echo=FALSE}
+fighter.data <- read.csv(file="data.csv")
+a <- ggplot(fighter.data,aes(x=Height.cm,y=Reach.cm,colour=Class))
+a <- a + geom_point() + theme(legend.position="none",aspect.ratio=1)
+a <- a + labs(title="Height vs Reach",xlab="Height (cm)",ylab="Reach (cm)")
+
+b <- ggplot(fighter.data,aes(x=Height.cm,y=Weight.kg,colour=Class))
+b <- b + geom_point() + theme(legend.position="none", aspect.ratio=1)
+b <- b + labs(title="Weight vs Height",xlab="Height (cm)",ylab="Weight (kg)")
+
+c <- ggplot(fighter.data,aes(x=Reach.cm,y=Weight.kg,colour=Class))
+c <- c + geom_point() + theme(legend.position="none", aspect.ratio=1)
+c <- c + labs(title="Weight vs Reach",xlab="Reach (cm)",ylab="Weight (kg)")
+
+grid.arrange(b,c,a,ncol=3)
+```
+
+Most of the fighter's weights are at their weight class weights, and are thus grouped into classes already which is not ideal for creating a linear model. Initially I did attempt to create a fit only on the heavyweight data as their weights show some variability, however the fit was not good over the whole range. The relationship between height or reach to weight is also not linear perfectly, so I attempted a quadratic model, however it did not produce a much better fit, and linear model is very simple. Therefore I fit all the data. The code below produces the linear model and displays the coefficients and shows a plot of the data with the fit.
+
+```{r}
+beta.fit <- lm(Weight.kg ~ Height.cm + Reach.cm,data=fighter.data)
+beta.fit
+
+p3d <- scatterplot3d(x=fighter.data$Height.cm,y=fighter.data$Reach.cm,z=fighter.data$Weight.kg,angle=60,
+                     xlab="Height (cm)",ylab="Reach (cm)",zlab="Weight (kg)")
+p3d$plane3d(beta.fit)
+```
+
+The model suggests a form of my linear model to be approximatly $\beta = 0.975*height + 0.35*reach$. $\beta$ here is the value calculated by the fit. Each fighter then recieves a $\beta$ score which will determine their size class. I then apply this model to the data and find the average $\beta$ score of each weight class.
+
+```{r Z}
+fighter.data <- mutate(fighter.data,beta = (0.975*Height.cm)+(0.35*Reach.cm))
+avg <- aggregate(fighter.data[,6],list(fighter.data$Class), mean)
+names(avg) <- c("Weight.Class","beta.mean")
+avg <- arrange(avg,beta.mean)
+pander(avg)
+```
+
+Each weight class now has an average $\beta$ score. Starting with the smaller classes I increase the $\beta$ score by five for each larger class. Along with the new definitions, I propose new names for each size class based on Greek mythology as words such as light and heavy no longer apply. These new names also remove the need to have a 'womens' modifier in the name of women's classes.
+
+```{r new.classes, echo=FALSE}
+Size.Class <- c("Artemis","Dionysus","Athena","Pan","Hermes","Hephaestus","Ares","Apollo","Poseidon","Zeus")
+Beta.Score <- c(215,220,220,225,230,235,240,245,250,"open")
+cl <- data.frame(Weight.class=avg$Weight.Class,Size.Class,Beta.Score)
+pander(cl)
 ```
 
 ##Conclusion
-I would like to mention the class system proposed here is only meant as an example of an alternative to the traditional weight classes. Given sufficient time and resources a fuller and more accurate method for determining a fighters size class could be determined, however a class system based on body features which are as static as height and reach would solve the problem requiring weigh-ins before fights allowing for better health and stamina of fighters, resulting in more entertaining fights (which is what we all want).
+I would like to mention the class system proposed here is only meant as an example of an alternative to the traditional weight classes. Given sufficient time and resources a fuller and more accurate method for determining a fighters size class could be determined, however a class system based on body features which are as static, such as height and reach, would solve the problem requiring weigh-ins before fights allowing for better health and stamina of fighters; resulting in more entertaining fights (which is what we all want).
 
-It is also important to note that weight is not the be all end all of determing a fighting class. Jon Jones for instance, in addition his skill, has a huge advantage against his opponents due to his lanky body and a class system reflecting body shape. Also, other sports (hockey, football, rugby...) have a variety of sized players competing directly with each other with little to no compensation for size or speed differences and makes me wonder just how nessesary size classes are.
+Accurate measurments are required for this system to work and would nessesitate some sort of standard mearsuring technique. Trained individuals may negate some discrepancies in measurements as well as specilized apparatuses (midevil torture devices come to mind).
+
+As a final argument for a size based system it is also important to note that weight is not the be all end all of determing equality between fighters of a given class. Jon Jones for instance, in addition his skill, has a huge advantage against his opponents due to his lanky body. Thus weight classes do favor some fighters over others. Also, other sports (hockey, football, rugby...) have a variety of sized players competing directly with each other with little to no compensation for size or speed differences and makes me wonder just how nessesary size classes are.
