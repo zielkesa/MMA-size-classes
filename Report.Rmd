@@ -152,7 +152,8 @@ fighter.data <- mutate(fighter.data,beta = (0.975*Height.cm)+(0.35*Reach.cm))
 avg <- aggregate(fighter.data[,6],list(fighter.data$Class), mean)
 names(avg) <- c("Weight.Class","beta.mean")
 avg <- arrange(avg,beta.mean)
-pander(avg)
+pander::pandoc.table(avg, style="simple")
+#pander(avg)
 ```
 
 Each weight class now has an average $\beta$ score. Starting with the smaller classes I increase the $\beta$ score by five for each larger class. Along with the new definitions, I propose new names for each size class based on Greek mythology as words such as light and heavy no longer apply. These new names also remove the need to have a 'womens' modifier in the name of women's classes.
@@ -161,7 +162,8 @@ Each weight class now has an average $\beta$ score. Starting with the smaller cl
 Size.Class <- c("Artemis","Dionysus","Athena","Pan","Hermes","Hephaestus","Ares","Apollo","Poseidon","Zeus")
 Beta.Score <- c(215,220,220,225,230,235,240,245,250,"open")
 cl <- data.frame(Weight.class=avg$Weight.Class,Size.Class,Beta.Score)
-pander(cl)
+pander::pandoc.table(cl, style="simple")
+#pander(cl)
 ```
 
 ##Conclusion

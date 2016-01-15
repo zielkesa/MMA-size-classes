@@ -142,60 +142,49 @@ fighter.data <- mutate(fighter.data,beta = (0.975*Height.cm)+(0.35*Reach.cm))
 avg <- aggregate(fighter.data[,6],list(fighter.data$Class), mean)
 names(avg) <- c("Weight.Class","beta.mean")
 avg <- arrange(avg,beta.mean)
-pander(avg)
+pander::pandoc.table(avg, style="simple")
 ```
 
+```
+## 
+## 
+##    Weight.Class     beta.mean 
+## ------------------ -----------
+## Women_Strawweight     215.7   
+##     Flyweight         220.3   
+## Women_Bantamweight    222.6   
+##    Bantamweight        226    
+##   Featherweight       232.7   
+##    Lightweight        236.3   
+##    Welterweight       241.6   
+##    Middleweight       246.8   
+## Light_Heavyweight      250    
+##    Heavyweight         254
+```
 
-------------------------------
-   Weight.Class     beta.mean 
------------------- -----------
-Women_Strawweight     215.7   
-
-    Flyweight         220.3   
-
-Women_Bantamweight    222.6   
-
-   Bantamweight        226    
-
-  Featherweight       232.7   
-
-   Lightweight        236.3   
-
-   Welterweight       241.6   
-
-   Middleweight       246.8   
-
-Light_Heavyweight      250    
-
-   Heavyweight         254    
-------------------------------
+```r
+#pander(avg)
+```
 
 Each weight class now has an average $\beta$ score. Starting with the smaller classes I increase the $\beta$ score by five for each larger class. Along with the new definitions, I propose new names for each size class based on Greek mythology as words such as light and heavy no longer apply. These new names also remove the need to have a 'womens' modifier in the name of women's classes.
 
 
---------------------------------------------
-   Weight.class     Size.Class   Beta.Score 
------------------- ------------ ------------
-Women_Strawweight    Artemis        215     
-
-    Flyweight        Dionysus       220     
-
-Women_Bantamweight    Athena        220     
-
-   Bantamweight        Pan          225     
-
-  Featherweight       Hermes        230     
-
-   Lightweight      Hephaestus      235     
-
-   Welterweight        Ares         240     
-
-   Middleweight       Apollo        245     
-
-Light_Heavyweight    Poseidon       250     
-
-   Heavyweight         Zeus         open    
---------------------------------------------
+```
+## 
+## 
+##    Weight.class     Size.Class   Beta.Score 
+## ------------------ ------------ ------------
+## Women_Strawweight    Artemis        215     
+##     Flyweight        Dionysus       220     
+## Women_Bantamweight    Athena        220     
+##    Bantamweight        Pan          225     
+##   Featherweight       Hermes        230     
+##    Lightweight      Hephaestus      235     
+##    Welterweight        Ares         240     
+##    Middleweight       Apollo        245     
+## Light_Heavyweight    Poseidon       250     
+##    Heavyweight         Zeus         open
+```
 
 ##Conclusion
 I would like to mention the class system proposed here is only meant as an example of an alternative to the traditional weight classes. Given sufficient time and resources a fuller and more accurate method for determining a fighters size class could be determined, however a class system based on body features which are as static, such as height and reach, would solve the problem requiring weigh-ins before fights allowing for better health and stamina of fighters; resulting in more entertaining fights (which is what we all want).
