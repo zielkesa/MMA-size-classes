@@ -1,10 +1,5 @@
----
-title: "An Alternative to Weight Classes in MMA"
-author: "Stephen Zielke"
-output: 
-  html_document:
-    keep_md: TRUE
----
+# An Alternative to Weight Classes in MMA
+Stephen Zielke  
 
 ##Abstract
 MMA fighter's are classified based on their weight. Fighters weigh in the day before competition allowing them to cut water weight and fight at smaller weight classes than they weigh during competition. Cutting weight is beleived to have serious long term health implications. I propose an alternative to weight classes based on a fighter's height and reach creating new 'size classes'.
@@ -20,16 +15,10 @@ I propose another method of determining classes, not based on weight, but on a f
 
 ##Data Collection
 Fighter weight, height and reach were scraped from ufc.com using the rvest package. The code below accomplishes the data collection:
-```{r, include=FALSE}
-library(dplyr)
-library(ggplot2)
-library(gridExtra)
-library(pander)
-library(rvest)
-library(scatterplot3d)
-```
 
-```{r collection, eval=FALSE}
+
+
+```r
 #global variables
 classes <- c("Flyweight","Bantamweight","Featherweight","Lightweight","Welterweight","Middleweight",
                "Light_Heavyweight","Heavyweight","Women_Strawweight","Women_Bantamweight")
@@ -117,37 +106,38 @@ get_data <- function(){
 
 The proposed size classes should be based on static features of a fighters body, and thus I will attempt to create a classification based on a linear combination of a fighter's height and reach. The plots below show the relationship between a fighters height, reach, and weight. Colours signify different weight classes.
 
-```{r explore, echo=FALSE}
-fighter.data <- read.csv(file="data.csv")
-a <- ggplot(fighter.data,aes(x=Height.cm,y=Reach.cm,colour=Class))
-a <- a + geom_point() + theme(legend.position="none",aspect.ratio=1)
-a <- a + labs(title="Height vs Reach",xlab="Height (cm)",ylab="Reach (cm)")
-
-b <- ggplot(fighter.data,aes(x=Height.cm,y=Weight.kg,colour=Class))
-b <- b + geom_point() + theme(legend.position="none", aspect.ratio=1)
-b <- b + labs(title="Weight vs Height",xlab="Height (cm)",ylab="Weight (kg)")
-
-c <- ggplot(fighter.data,aes(x=Reach.cm,y=Weight.kg,colour=Class))
-c <- c + geom_point() + theme(legend.position="none", aspect.ratio=1)
-c <- c + labs(title="Weight vs Reach",xlab="Reach (cm)",ylab="Weight (kg)")
-
-grid.arrange(b,c,a,ncol=3)
-```
+![](Report_files/figure-html/explore-1.png) 
 
 Most of the fighter's weights are at their weight class weights, and are thus grouped into classes already which is not ideal for creating a linear model. Initially I did attempt to create a fit only on the heavyweight data as their weights show some variability, however the fit was not good over the whole range. The relationship between height or reach to weight is also not linear perfectly, so I attempted a quadratic model, however it did not produce a much better fit, and linear model is very simple. Therefore I fit all the data. The code below produces the linear model and displays the coefficients and shows a plot of the data with the fit.
 
-```{r}
+
+```r
 beta.fit <- lm(Weight.kg ~ Height.cm + Reach.cm,data=fighter.data)
 beta.fit
+```
 
+```
+## 
+## Call:
+## lm(formula = Weight.kg ~ Height.cm + Reach.cm, data = fighter.data)
+## 
+## Coefficients:
+## (Intercept)    Height.cm     Reach.cm  
+##   -162.7468       0.9756       0.3479
+```
+
+```r
 p3d <- scatterplot3d(x=fighter.data$Height.cm,y=fighter.data$Reach.cm,z=fighter.data$Weight.kg,angle=60,
                      xlab="Height (cm)",ylab="Reach (cm)",zlab="Weight (kg)")
 p3d$plane3d(beta.fit)
 ```
 
+![](Report_files/figure-html/unnamed-chunk-2-1.png) 
+
 The model suggests a form of my linear model to be approximatly $\beta = 0.975*height + 0.35*reach$. $\beta$ here is the value calculated by the fit. Each fighter then recieves a $\beta$ score which will determine their size class. I then apply this model to the data and find the average $\beta$ score of each weight class.
 
-```{r Z}
+
+```r
 fighter.data <- mutate(fighter.data,beta = (0.975*Height.cm)+(0.35*Reach.cm))
 avg <- aggregate(fighter.data[,6],list(fighter.data$Class), mean)
 names(avg) <- c("Weight.Class","beta.mean")
@@ -155,14 +145,57 @@ avg <- arrange(avg,beta.mean)
 pander(avg)
 ```
 
+
+------------------------------
+   Weight.Class     beta.mean 
+------------------ -----------
+Women_Strawweight     215.7   
+
+    Flyweight         220.3   
+
+Women_Bantamweight    222.6   
+
+   Bantamweight        226    
+
+  Featherweight       232.7   
+
+   Lightweight        236.3   
+
+   Welterweight       241.6   
+
+   Middleweight       246.8   
+
+Light_Heavyweight      250    
+
+   Heavyweight         254    
+------------------------------
+
 Each weight class now has an average $\beta$ score. Starting with the smaller classes I increase the $\beta$ score by five for each larger class. Along with the new definitions, I propose new names for each size class based on Greek mythology as words such as light and heavy no longer apply. These new names also remove the need to have a 'womens' modifier in the name of women's classes.
 
-```{r new.classes, echo=FALSE}
-Size.Class <- c("Artemis","Dionysus","Athena","Pan","Hermes","Hephaestus","Ares","Apollo","Poseidon","Zeus")
-Beta.Score <- c(215,220,220,225,230,235,240,245,250,"open")
-cl <- data.frame(Weight.class=avg$Weight.Class,Size.Class,Beta.Score)
-pander(cl)
-```
+
+--------------------------------------------
+   Weight.class     Size.Class   Beta.Score 
+------------------ ------------ ------------
+Women_Strawweight    Artemis        215     
+
+    Flyweight        Dionysus       220     
+
+Women_Bantamweight    Athena        220     
+
+   Bantamweight        Pan          225     
+
+  Featherweight       Hermes        230     
+
+   Lightweight      Hephaestus      235     
+
+   Welterweight        Ares         240     
+
+   Middleweight       Apollo        245     
+
+Light_Heavyweight    Poseidon       250     
+
+   Heavyweight         Zeus         open    
+--------------------------------------------
 
 ##Conclusion
 I would like to mention the class system proposed here is only meant as an example of an alternative to the traditional weight classes. Given sufficient time and resources a fuller and more accurate method for determining a fighters size class could be determined, however a class system based on body features which are as static, such as height and reach, would solve the problem requiring weigh-ins before fights allowing for better health and stamina of fighters; resulting in more entertaining fights (which is what we all want).
